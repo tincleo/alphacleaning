@@ -1,0 +1,101 @@
+---
+import { getRelativeLocaleUrl } from 'astro:i18n';
+
+const { pathname } = Astro.url;
+const currentLocale = Astro.currentLocale as 'fr' | 'en';
+const isDefaultLocale = currentLocale === 'fr';
+
+type PathMapping = {
+  [K in '/services/nettoyage-canapes/' | '/services/nettoyage-tapis/']: string;
+};
+
+type ReversePathMapping = {
+  [K in '/services/couch-cleaning/' | '/services/carpet-cleaning/']: string;
+};
+
+// URL mapping for pages with different slugs
+const urlMapping = {
+  fr: {
+    '/services/nettoyage-canapes/': '/services/couch-cleaning/',
+    '/services/nettoyage-tapis/': '/services/carpet-cleaning/',
+  } as PathMapping,
+  en: {
+    '/services/couch-cleaning/': '/services/nettoyage-canapes/',
+    '/services/carpet-cleaning/': '/services/nettoyage-tapis/',
+  } as ReversePathMapping,
+} as const;
+
+// Get the current path without the language prefix
+const pathWithoutLocale = isDefaultLocale ? pathname : pathname.replace(/^\/en/, '');
+
+// Check if current page has a different slug in the target language
+const getMappedUrl = (targetLocale: 'fr' | 'en') => {
+  const sourceLang = targetLocale === 'fr' ? 'en' : 'fr';
+  const mapping = urlMapping[sourceLang];
+  
+  // Type guard to ensure pathWithoutLocale is a valid key
+  const isValidPath = (path: string): path is keyof typeof mapping => {
+    return path in mapping;
+  };
+  
+  if (isValidPath(pathWithoutLocale)) {
+    const mappedPath = mapping[pathWithoutLocale];
+    return targetLocale === 'en' 
+      ? `/en${mappedPath}`
+      : mappedPath;
+  }
+  
+  return targetLocale === 'en'
+    ? `/en${pathWithoutLocale}`
+    : pathWithoutLocale;
+};
+
+// Generate URLs for language switching
+const frUrl = getMappedUrl('fr');
+const enUrl = getMappedUrl('en');
+
+interface NavItem {
+  href: string;
+  label: {
+    fr: string;
+    en: string;
+  };
+}
+
+const navigation: NavItem[] = [
+  { href: '/', label: { fr: 'Accueil', en: 'Home' } },
+  { href: '/alpha-cleaning/', label: { fr: 'À propos', en: 'About' } },
+  { href: '/services/', label: { fr: 'Services', en: 'Services' } },
+  { href: '/contact/', label: { fr: 'Contact', en: 'Contact' } },
+];
+---
+
+<header class="bg-white shadow">
+  <nav class="container mx-auto px-4 py-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-8">
+        {
+          navigation.map(({ href, label }) => {
+            const url = currentLocale === 'en' ? `/en${href}` : href;
+            return (
+              <a
+                href={url}
+                class="text-gray-700 hover:text-gray-900"
+              >
+                {label[currentLocale]}
+              </a>
+            );
+          })
+        }
+      </div>
+      <div class="flex items-center space-x-4">
+        <a
+          href={currentLocale === 'fr' ? enUrl : frUrl}
+          class="px-3 py-1 border rounded hover:bg-gray-100"
+        >
+          {currentLocale === 'fr' ? 'EN' : 'FR'}
+        </a>
+      </div>
+    </div>
+  </nav>
+</header> 
